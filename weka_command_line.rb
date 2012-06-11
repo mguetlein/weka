@@ -1,5 +1,13 @@
 
-ENV["JAVA_HOME"] = "/usr/lib/jvm/java-6-openjdk" unless ENV["JAVA_HOME"]
+unless ENV["JAVA_HOME"]
+  ["/usr/lib/jvm/java-6-sun-1.6.0.24","/usr/lib/jvm/java-6-openjdk"].each do |jh|
+    if File.directory?(jh)
+      ENV["JAVA_HOME"] = jh
+      break
+    end
+  end
+  raise "no java home found" unless ENV["JAVA_HOME"]
+end      
   
 class String
   def is_numeric?
