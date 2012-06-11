@@ -69,6 +69,13 @@ get '/:weka_algorithm/:id' do
   end  
 end
 
+delete '/:weka_algorithm/:id' do
+  model = Weka::WekaModel.get(params[:id])
+  raise OpenTox::NotFoundError.new("weka-model '#{params[:id]}' not found.") unless model
+  content_type "text/plain"
+  model.delete_model
+end
+
 get '/:weka_algorithm/:id/predicted/:prop' do
   model = Weka::WekaModel.get(params[:id])
     raise OpenTox::NotFoundError.new("weka-model '#{params[:id]}' not found.") unless model

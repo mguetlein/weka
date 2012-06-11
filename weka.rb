@@ -25,9 +25,7 @@ module Weka
     attribute :training_dataset_uri
     attribute :prediction_feature
     attribute :independent_features_yaml
-    attribute :training_arff_file
     attribute :arff_class_index
-    attribute :model_file
     attribute :file
     attribute :predicted_datasets_yaml
 
@@ -135,15 +133,26 @@ module Weka
       end
       raise arff_string if self.arff_class_index==-1
       LOGGER.debug "class_index #{self.arff_class_index}"
-      data_file = File.new(@@modeldir+"/"+self.id+".training.arff","w+")
+      data_file = File.new(training_arff_file(),"w+")
       data_file.write(arff_string)
       data_file.close
       LOGGER.debug "saved to "+data_file.path
-      self.training_arff_file = data_file.path
       raise "no id" if self.id==nil
-      self.model_file =  @@modeldir+"/"+self.id+".model"
-      WekaCommandLine::build_model(self.weka_algorithm,self.training_arff_file,self.arff_class_index,self.model_file)
+      WekaCommandLine::build_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file())
       self.save
+      File.delete(data_file.path)
+    end
+    
+    def model_file
+      @@modeldir+"/"+self.id+".model"
+    end
+    
+    def training_arff_file
+      @@modeldir+"/"+self.id+".training.arff"
+    end
+    
+    def test_arff_file
+      @@modeldir+"/"+self.id+".test.arff"
     end
     
     def metadata
@@ -181,7 +190,6 @@ module Weka
     
     def apply(dataset_uri, waiting_task=nil)
       
-      LOGGER.debug "get dataset as arff #{dataset_uri}"
       test_dataset = OpenTox::Dataset.find(dataset_uri)
       if !test_dataset.features.keys.include?(self.prediction_feature)
         new_test_dataset = OpenTox::Dataset.create(CONFIG[:services]["opentox-dataset"],subjectid)
@@ -204,14 +212,15 @@ module Weka
         created_modified_test_dataset = true
       else
         created_modified_test_dataset = false 
-      end     
+      end
+      LOGGER.debug "get dataset as arff #{dataset_uri}"     
       arff_string = OpenTox::RestClientWrapper.get(test_dataset.uri,{:accept=>"text/arff"})
   
       #LOGGER.debug "got arff:\n#{arff_string}"
-      data_file = File.new(@@modeldir+"/"+self.id+".test.arff","w+")
+      data_file = File.new(test_arff_file(),"w+")
       data_file.write(arff_string)
       data_file.close
-      predictions = WekaCommandLine::apply_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file,
+      predictions = WekaCommandLine::apply_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file(),
         WekaModel::feature_type(self.weka_algorithm))
       raise "no predictions" unless predictions.size>0
       
@@ -250,12 +259,29 @@ module Weka
       self.predicted_datasets = predicted
       self.save
       test_dataset.delete if created_modified_test_dataset
+      File.delete(data_file.path)
       dataset.uri
     end
     
     def uri
       raise "no id" if self.id==nil
       $url_provider.url_for("/"+self.weka_algorithm.split(".")[-1]+"/"+self.id.to_s, :full)
+    end
+    
+    def delete_model
+      uri = self.uri
+      LOGGER.debug "deleting #{uri}"
+      [ model_file(), training_arff_file(), test_arff_file() ].each do |f|
+        begin
+          LOGGER.debug "deleting file #{f}"
+          File.delete(f)
+        rescue => ex
+          LOGGER.warn "could not delete file #{ex.message}"
+        end
+      end
+      LOGGER.debug "deleting from database"
+      self.delete
+      "model #{uri} deleted\n"
     end
     
   end
