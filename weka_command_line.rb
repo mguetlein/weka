@@ -34,7 +34,7 @@ module WekaCommandLine
     cmd = "java -cp weka.jar #{algorithm} -t #{data_file} -c #{class_feature_index} -d #{model_file}"
     LOGGER.debug "building model '#{cmd}'"
     output = IO.popen(cmd)
-    $stderr.puts output.readlines
+    #$stderr.puts output.readlines
   end
   
   def self.apply_model(algorithm, data_file, class_feature_index, model_file, feature_type)
