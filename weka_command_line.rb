@@ -35,6 +35,8 @@ module WekaCommandLine
     LOGGER.debug "building model '#{cmd}'"
     output = IO.popen(cmd)
     #$stderr.puts output.readlines
+    output.readlines
+    output.close
   end
   
   def self.apply_model(algorithm, data_file, class_feature_index, model_file, feature_type)
@@ -63,6 +65,7 @@ module WekaCommandLine
         raise "invalid feature_type: #{feature_type}"
       end
     end
+    output.close
     LOGGER.debug predictions.inspect
     predictions
   end
