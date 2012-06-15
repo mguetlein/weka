@@ -87,7 +87,7 @@ module Weka
         end
       end
       #puts p.to_yaml
-      set = Weka::WekaModel.find(p)
+      set = Weka::WekaModel.find(p).collect.delete_if{|m| !File.exist?(m.model_file())}
       if (set.size == 0)
         return nil
       else 
@@ -123,15 +123,17 @@ module Weka
       #LOGGER.debug "got arff:\n#{arff_string}"
       self.arff_class_index = -1
       attr_index = 0
+      attrs = []
       arff_string.each_line do |s|
         if s =~ /@ATTRIBUTE/
+          attrs << s.chomp
           attr_index += 1 
           if s =~ /#{self.prediction_feature}/
             self.arff_class_index = attr_index
           end 
         end
       end
-      raise arff_string if self.arff_class_index==-1
+      raise "prediction feature #{prediction_feature} not found in arff-file #{attrs.inspect}" if self.arff_class_index==-1
       LOGGER.debug "class_index #{self.arff_class_index}"
       data_file = File.new(training_arff_file(),"w+")
       data_file.write(arff_string)
@@ -139,6 +141,7 @@ module Weka
       LOGGER.debug "saved to "+data_file.path
       raise "no id" if self.id==nil
       WekaCommandLine::build_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file())
+      raise "weka model building failed" unless File.exist?(self.model_file())
       self.save
       File.delete(data_file.path)
     end
@@ -199,7 +202,7 @@ module Weka
           new_test_dataset.add_feature(f,m)
           test_dataset.compounds.each do |c|
             test_dataset.data_entries[c][f].each do |v|
-              new_test_dataset.add(c,f,v) if 
+              new_test_dataset.add(c,f,v,true) if 
                 test_dataset.data_entries[c] and test_dataset.data_entries[c][f]
             end if test_dataset.data_entries[c] and test_dataset.data_entries[c][f]
           end
@@ -247,7 +250,7 @@ module Weka
       count = 0
       test_dataset.compounds.each do |c|
         num_compounds[c].times do
-          dataset.add(c,predicted_feature,predictions[count])
+          dataset.add(c,predicted_feature,predictions[count],true)
           count += 1
         end
       end

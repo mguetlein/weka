@@ -13,12 +13,12 @@ post '/:weka_algorithm/:id' do
 
   dataset = model.find_predicted_model(params[:dataset_uri])
   if dataset
-    LOGGER.info "found already existing weka prediction dataset #{dataset}"
+    LOGGER.info "found already existing weka prediction dataset: #{dataset}"
     dataset
   else
     task = OpenTox::Task.create( "Apply Model #{model.uri}", url_for("/", :full) ) do |task|
       res = model.apply(params[:dataset_uri], task)
-      LOGGER.info "weka model prediction done #{res}"
+      LOGGER.info "weka model prediction done: #{res}"
       res
     end
     return_task(task)
@@ -29,17 +29,17 @@ post '/:weka_algorithm' do
   [:dataset_uri, :prediction_feature].each do |p|
     raise OpenTox::BadRequestError.new("#{p} missing") unless params[p].to_s.size>0
   end
-  LOGGER.info "building weka model with params #{params.inspect}"
+  LOGGER.info "creating weka model with params #{params.inspect}"
   
   model = Weka::WekaModel.find_model(params)
   if model
-    LOGGER.info "found already existing model #{model}"
+    LOGGER.info "found already existing model: #{model}"
     model
   else
     task = OpenTox::Task.create( "Create Model", url_for("/", :full) ) do |task|
       model = Weka::WekaModel.create(params,@subjectid)
       model.build(task)
-      LOGGER.info "weka model build #{model.uri}"
+      LOGGER.info "weka model created: #{model.uri}"
       model.uri
     end
     return_task(task)
