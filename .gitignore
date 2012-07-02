@@ -1,5 +1,5 @@
 .buildpath
 .loadpath
 .project
-model/*
 data/*
+*.model
