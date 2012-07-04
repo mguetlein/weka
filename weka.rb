@@ -88,7 +88,8 @@ module Weka
       end
       #puts p.to_yaml
       LOGGER.debug "searching for existing weka model #{p.inspect}"
-      set = Lib::OhmUtil.find( Weka::WekaModel, p ).collect.delete_if{|m| !File.exist?(m.model_file())}
+      [:splat,:captures].each{|k| p.delete(k)}
+      Weka::WekaModel.find(p).collect.delete_if{|m| !File.exist?(m.model_file())}
       if (set.size == 0)
         return nil
       else 
@@ -112,6 +113,7 @@ module Weka
       params[:date] = Time.new
       params[:creator] = AA_SERVER ? OpenTox::Authorization.get_user(subjectid) : "unknown"
       params[:training_dataset_uri] = params.delete("dataset_uri")
+      [:splat,:captures].each{|k| params.delete(k)}
       model = super params
       model.subjectid = subjectid
       model
