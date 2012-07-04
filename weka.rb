@@ -87,6 +87,7 @@ module Weka
         end
       end
       #puts p.to_yaml
+      LOGGER.debug "searching for existing weka model #{p.inspect}"
       set = Weka::WekaModel.find(p).collect.delete_if{|m| !File.exist?(m.model_file())}
       if (set.size == 0)
         return nil
