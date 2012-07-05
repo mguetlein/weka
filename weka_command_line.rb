@@ -66,7 +66,7 @@ module WekaCommandLine
       end
     end
     output.close
-    LOGGER.debug predictions.inspect
+    LOGGER.debug "predictions: #{predictions.size} : [ #{predictions.join(" ")[0..255]} ... ]"
     predictions
   end
   

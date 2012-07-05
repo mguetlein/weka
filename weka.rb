@@ -258,7 +258,7 @@ module Weka
           count += 1
         end
       end
-      raise unless count==predictions.size
+      raise "number of predictions != count (#{predictions.size} != #{count})" unless count==predictions.size
       dataset.save(subjectid)
       
       predicted = self.predicted_datasets
