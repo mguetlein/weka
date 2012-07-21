@@ -66,11 +66,11 @@ get '/:weka_algorithm/:id' do
   when "application/rdf+xml"
     content_type "application/rdf+xml"
     model.to_rdf
-  when "/text\/html/"
+  when /html/
     model.inspect
     OpenTox.text_to_html model.to_yaml
   else
-    raise "not yet implemented"
+    raise "not yet implemented #{request.env['HTTP_ACCEPT']}"
   end  
 end
 
