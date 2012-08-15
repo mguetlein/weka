@@ -90,7 +90,7 @@ module Weka
       
       LOGGER.debug "searching for existing weka model #{p.inspect}"
       [:splat,:captures].each{|k| p.delete(k)}
-      set = Weka::WekaModel.find(p).collect.delete_if{|m| !File.exist?(m.model_file())}
+      set = Weka::WekaModel.find(p).collect.delete_if{|m| !File.exist?(m.model_zip_file())}
       if (set.size == 0)
         return nil
       else 
@@ -145,7 +145,8 @@ module Weka
       LOGGER.debug "saved to "+data_file.path
       raise "no id" if self.id==nil
       WekaCommandLine::build_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file())
-      raise "weka model building failed" unless File.exist?(self.model_file())
+      #raise "weka model building failed" unless File.exist?(self.model_file())
+      self.zip_model()
       self.save
       File.delete(data_file.path)
     end
@@ -153,6 +154,30 @@ module Weka
     def model_file
       @@modeldir+"/"+self.id+".model"
     end
+    
+    def model_zip_file
+      "#{self.model_file()}.zip"
+    end
+    
+    def zip_model
+      raise "no weka model found" unless File.exist?(self.model_file())
+      LOGGER.debug "zipping #{self.model_file()}"
+      output = IO.popen("/usr/bin/zip -D #{self.model_zip_file()} #{self.model_file()}")
+      $stderr.puts output.readlines
+      output.close
+      raise "could not zip model file" unless File.exist?(self.model_zip_file())
+    end
+    
+    def unzip_model
+      if !File.exist?(self.model_file())
+        LOGGER.debug "unzipping #{self.model_file()}"
+        raise "no model zip file found" unless File.exist?(self.model_zip_file())
+        output = IO.popen("/usr/bin/unzip -nj #{self.model_zip_file()} -d #{@@modeldir}")
+        $stderr.puts output.readlines
+        output.close
+        raise "could not unzip file" unless File.exist?(self.model_file())
+      end
+    end    
     
     def training_arff_file
       @@modeldir+"/"+self.id+".training.arff"
@@ -227,6 +252,7 @@ module Weka
       data_file = File.new(test_arff_file(),"w+")
       data_file.write(arff_string)
       data_file.close
+      self.unzip_model()
       predictions = WekaCommandLine::apply_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file(),
         WekaModel::feature_type(self.weka_algorithm))
       raise "no predictions" unless predictions.size>0
@@ -267,6 +293,7 @@ module Weka
       self.save
       test_dataset.delete if created_modified_test_dataset
       File.delete(data_file.path)
+      File.delete(self.model_file())
       dataset.uri
     end
     
@@ -278,12 +305,12 @@ module Weka
     def delete_model
       uri = self.uri
       LOGGER.debug "deleting #{uri}"
-      [ model_file(), training_arff_file(), test_arff_file() ].each do |f|
+      [ model_zip_file(), model_file(), training_arff_file(), test_arff_file() ].each do |f|
         begin
           LOGGER.debug "deleting file #{f}"
           File.delete(f)
         rescue => ex
-          LOGGER.warn "could not delete file #{ex.message}"
+          LOGGER.warn "could not delete file #{ex.message}" unless f==model_file()
         end
       end
       LOGGER.debug "deleting from database"

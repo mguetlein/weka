@@ -3,3 +3,4 @@
 .project
 data/*
 *.model
+*.model.zip
