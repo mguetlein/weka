@@ -1,3 +1,4 @@
+require 'open3'
 
 unless ENV["JAVA_HOME"]
   ["/usr/lib/jvm/java-6-sun-1.6.0.24","/usr/lib/jvm/java-6-openjdk"].each do |jh|
@@ -30,6 +31,12 @@ module WekaCommandLine
     Rjb::load("weka.jar", jvmargs=["-Xmx1000M","-Djava.awt.headless=true"])
   end
   
+  def self.java_version
+    cmd = "java -version"
+    stdin, stdout, stderr = Open3.popen3(cmd)
+    stderr.readlines.join("")
+  end
+  
   def self.build_model(algorithm, data_file, class_feature_index, model_file)
     cmd = "java -cp weka.jar #{algorithm} -t #{data_file} -c #{class_feature_index} -d #{model_file}"
     LOGGER.debug "building model '#{cmd}'"
@@ -38,6 +45,17 @@ module WekaCommandLine
     output.readlines
     output.close
   end
+  
+  def self.feature_weights(model_file)
+    cmd = "java -jar weka_weights.jar #{model_file}"
+    LOGGER.debug "compute weka weights '#{cmd}'"
+    stdin, output, stderr = Open3.popen3(cmd)
+    LOGGER.debug stderr.readlines.collect{|l| l.chomp}.join(";")
+    #$stderr.puts output.readlines
+    feature_weights = output.readlines
+    output.close
+    feature_weights.join("")
+  end  
   
   def self.apply_model(algorithm, data_file, class_feature_index, model_file, feature_type)
     cmd = "java -cp weka.jar #{algorithm} -T #{data_file} -c #{class_feature_index} -l #{model_file} -p 0"

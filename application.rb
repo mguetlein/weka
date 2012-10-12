@@ -3,6 +3,10 @@ require 'opentox-ruby'
 
 require 'weka.rb'
 
+get '/java_version' do
+  Weka.java_version+"\n"
+end
+
 post '/:weka_algorithm/:id' do
   model = Weka::WekaModel.get(params[:id])
   raise OpenTox::NotFoundError.new("weka-model '#{params[:id]}' not found.") unless model
@@ -82,9 +86,22 @@ delete '/:weka_algorithm/:id' do
   model.delete_model
 end
 
+get '/:weka_algorithm/:id/weights' do
+  model = Weka::WekaModel.get(params[:id])
+  raise OpenTox::NotFoundError.new("weka-model '#{params[:id]}' not found.") unless model
+  case @accept
+  when /html/
+    content_type "text/html"
+    OpenTox.text_to_html model.feature_weights_dynamic
+  else
+    content_type "text/plain"
+    model.feature_weights_dynamic
+  end
+end
+
 get '/:weka_algorithm/:id/predicted/:prop' do
   model = Weka::WekaModel.get(params[:id])
-    raise OpenTox::NotFoundError.new("weka-model '#{params[:id]}' not found.") unless model
+  raise OpenTox::NotFoundError.new("weka-model '#{params[:id]}' not found.") unless model
   model.subjectid = @subjectid
   if params[:prop] == "value"
     feature = model.prediction_value_feature

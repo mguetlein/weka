@@ -16,6 +16,10 @@ end
 
 module Weka
   
+  def self.java_version
+    WekaCommandLine.java_version
+  end
+  
   class WekaModel < Ohm::Model 
     
     attribute :date
@@ -28,7 +32,8 @@ module Weka
     attribute :arff_class_index
     attribute :file
     attribute :predicted_datasets_yaml
-
+    attribute :feature_weights
+    
     index :weka_algorithm
     index :prediction_feature
     index :training_dataset_uri
@@ -120,6 +125,16 @@ module Weka
       model
     end
     
+    def feature_weights_dynamic
+      if self.feature_weights==nil
+        self.unzip_model()
+        self.feature_weights = WekaCommandLine::feature_weights(self.model_file())
+        self.save
+        File.delete(self.model_file())
+      end
+      self.feature_weights
+    end
+    
     def build(waiting_task=nil)
       
       LOGGER.debug "get dataset as arff #{self.training_dataset_uri}"
@@ -147,6 +162,7 @@ module Weka
       WekaCommandLine::build_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file())
       #raise "weka model building failed" unless File.exist?(self.model_file())
       self.zip_model()
+      self.feature_weights = WekaCommandLine::feature_weights(self.model_file())
       self.save
       File.delete(data_file.path)
     end
@@ -160,10 +176,10 @@ module Weka
     end
     
     def zip_model
-      raise "no weka model found" unless File.exist?(self.model_file())
+      raise "no weka model found (probably build model failed because of weka-error)" unless File.exist?(self.model_file())
       LOGGER.debug "zipping #{self.model_file()}"
       output = IO.popen("/usr/bin/zip -D #{self.model_zip_file()} #{self.model_file()}")
-      $stderr.puts output.readlines
+      LOGGER.debug output.readlines.collect{|l| l.chomp}.join(";")
       output.close
       raise "could not zip model file" unless File.exist?(self.model_zip_file())
     end
@@ -173,7 +189,7 @@ module Weka
         LOGGER.debug "unzipping #{self.model_file()}"
         raise "no model zip file found" unless File.exist?(self.model_zip_file())
         output = IO.popen("/usr/bin/unzip -nj #{self.model_zip_file()} -d #{@@modeldir}")
-        $stderr.puts output.readlines
+        LOGGER.debug output.readlines.collect{|l| l.chomp}.join(";")
         output.close
         raise "could not unzip file" unless File.exist?(self.model_file())
       end
