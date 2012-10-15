@@ -35,6 +35,9 @@ module WekaCommandLine
     cmd = "java -version"
     stdin, stdout, stderr = Open3.popen3(cmd)
     stderr.readlines.join("")
+    stdin.close
+    stdout.close
+    stderr.close
   end
   
   def self.build_model(algorithm, data_file, class_feature_index, model_file)
@@ -54,6 +57,8 @@ module WekaCommandLine
     #$stderr.puts output.readlines
     feature_weights = output.readlines
     output.close
+    stderr.close
+    stdin.close    
     feature_weights.join("")
   end  
   
