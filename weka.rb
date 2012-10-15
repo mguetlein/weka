@@ -162,7 +162,7 @@ module Weka
       WekaCommandLine::build_model(self.weka_algorithm,data_file.path,self.arff_class_index,self.model_file())
       #raise "weka model building failed" unless File.exist?(self.model_file())
       self.zip_model()
-      self.feature_weights = WekaCommandLine::feature_weights(self.model_file())
+      #self.feature_weights = WekaCommandLine::feature_weights(self.model_file())
       self.save
       File.delete(data_file.path)
     end
