@@ -1,4 +1,3 @@
-require 'open3'
 
 unless ENV["JAVA_HOME"]
   ["/usr/lib/jvm/java-6-sun-1.6.0.24","/usr/lib/jvm/java-6-openjdk"].each do |jh|
@@ -24,7 +23,8 @@ class Array
     self.each{ |x| return false unless x.is_a?(String) and  x.is_numeric? }
   end
 end  
-    
+
+
 module WekaCommandLine
 
   def self.init
@@ -32,43 +32,31 @@ module WekaCommandLine
   end
   
   def self.java_version
-    cmd = "java -version"
-    stdin, stdout, stderr = Open3.popen3(cmd)
-    stderr.readlines.join("")
-    stdin.close
-    stdout.close
-    stderr.close
+    stdout_str, stderr_str = ProcessUtil.run("java -version")
+    stderr_str
   end
   
   def self.build_model(algorithm, data_file, class_feature_index, model_file)
     cmd = "java -cp weka.jar #{algorithm} -t #{data_file} -c #{class_feature_index} -d #{model_file}"
     LOGGER.debug "building model '#{cmd}'"
-    output = IO.popen(cmd)
-    #$stderr.puts output.readlines
-    output.readlines
-    output.close
+    stdout_str, stderr_str = ProcessUtil.run(cmd)
   end
   
   def self.feature_weights(model_file)
     cmd = "java -jar weka_weights.jar #{model_file}"
     LOGGER.debug "compute weka weights '#{cmd}'"
-    stdin, output, stderr = Open3.popen3(cmd)
-    LOGGER.debug stderr.readlines.collect{|l| l.chomp}.join(";")
-    #$stderr.puts output.readlines
-    feature_weights = output.readlines
-    output.close
-    stderr.close
-    stdin.close    
-    feature_weights.join("")
+    stdout_str, stderr_str = ProcessUtil.run(cmd)
+    LOGGER.debug stderr_str.gsub(/\n/,"; ")
+    stdout_str
   end  
   
   def self.apply_model(algorithm, data_file, class_feature_index, model_file, feature_type)
     cmd = "java -cp weka.jar #{algorithm} -T #{data_file} -c #{class_feature_index} -l #{model_file} -p 0"
     LOGGER.debug "apply model '#{cmd}'"
     predictions = []
-    output = IO.popen(cmd)
+    stdout_str, stderr_str = ProcessUtil.run(cmd)
     index = 1
-    output.readlines.each do |line|
+    stdout_str.split("\n").each do |line|
       if feature_type=="classification"
         match = line.match(/\s([0-9]+)\s*[0-9]+:.*\s*[0-9]+:([^\s]*)\s/)
         if (match)
@@ -88,7 +76,6 @@ module WekaCommandLine
         raise "invalid feature_type: #{feature_type}"
       end
     end
-    output.close
     LOGGER.debug "predictions: #{predictions.size} : [ #{predictions.join(" ")[0..255]} ... ]"
     predictions
   end

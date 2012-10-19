@@ -176,22 +176,13 @@ module Weka
     end
     
     def zip_model
-      raise "no weka model found (probably build model failed because of weka-error)" unless File.exist?(self.model_file())
-      LOGGER.debug "zipping #{self.model_file()}"
-      output = IO.popen("/usr/bin/zip -D #{self.model_zip_file()} #{self.model_file()}")
-      LOGGER.debug output.readlines.collect{|l| l.chomp}.join(";")
-      output.close
-      raise "could not zip model file" unless File.exist?(self.model_zip_file())
+      ZipUtil.zip(model_zip_file(),model_file())
     end
     
     def unzip_model
-      if !File.exist?(self.model_file())
-        LOGGER.debug "unzipping #{self.model_file()}"
-        raise "no model zip file found" unless File.exist?(self.model_zip_file())
-        output = IO.popen("/usr/bin/unzip -nj #{self.model_zip_file()} -d #{@@modeldir}")
-        LOGGER.debug output.readlines.collect{|l| l.chomp}.join(";")
-        output.close
-        raise "could not unzip file" unless File.exist?(self.model_file())
+      if !File.exist?(model_file())
+        ZipUtil.unzip(model_zip_file(),@@modeldir)
+        raise "could not unzip file" unless File.exist?(model_file())
       end
     end    
     
